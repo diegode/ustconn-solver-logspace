@@ -1,0 +1,119 @@
+	/** Calculates the m-th power of the matrix
+	*	Space Complexity:	the recursion is to the depth of m
+	*						thus we only need to store m counters of log-space
+	*/
+	public static double powerProduct(Graph A, int m, int i, int j) {
+		if (m==1)
+			return A.get(i, j);
+		int sum = 0;
+		for(int k=0; k<A.dim(); k++) {
+			if (m==2)
+				sum += A.get(i,k)*A.get(k, j);
+			else
+				sum += A.get(i,k)*powerProduct(A, m-1, k, j);
+			
+		}
+		return sum;		
+	}
+	
+	
+	
+	
+	
+	/** Rot_reg((v,w),j)
+	*/
+	/*public Pair<Pair<Integer,Integer>,Integer> rot_reg(int v, int w, int j) {
+		Pair<Integer,Integer> v_w;
+		int N = this.dim()-1;
+		if (j==0) {
+			if(w<N)
+				v_w = new Pair<Integer,Integer>(v, w+1);
+			else
+				v_w = new Pair<Integer,Integer>(v,1);
+			return new Pair<Pair<Integer,Integer>,Integer>(v_w,1);
+		}
+		if (j==1) {
+			if(w>1)
+				v_w = new Pair<Integer,Integer>(v, w-1);
+			else
+				v_w = new Pair<Integer,Integer>(v,N);
+			return new Pair<Pair<Integer,Integer>,Integer>(v_w,0);
+		}
+		if (j==2) {
+			if(adj_matrix[v][w] > 0)
+				v_w = new Pair<Integer,Integer>(w, v);
+			else
+				v_w = new Pair<Integer,Integer>(v,w);
+			return new Pair<Pair<Integer,Integer>,Integer>(v_w,2);
+		}
+		else {
+			v_w = new Pair<Integer,Integer>(v,w);
+			return new Pair<Pair<Integer,Integer>,Integer>(v_w,j);
+		}
+			
+	}*/
+	
+	/** Divides each element by the regularity level D
+	*/
+	/*(public void normalizeAdjMatrix(int D) {
+		for(int i=0; i<dim(); i++)
+			for(int j=0; j<dim(); j++)
+				adj_matrix[i][j] /= D;
+	}*/
+	
+	/** returns the regularity level D, -1 if the graph is irregular
+	*/
+	/*public int regularityDegree() {
+		int reg_deg = 0;
+		int count;
+		for(int i=0; i<dim(); i++) {
+			count = 0;
+			for(int j=0; j<dim(); j++)
+				if (adj_matrix[i][j] > 0)
+					count++;
+			if (i>0 && reg_deg != count)
+				return -1;
+			reg_deg = count;
+		}
+		return reg_deg;
+	}
+	
+	
+	
+		public static double[][] adjMatrixVariant(int var, int n) {
+		double[][] matrix = new double[n][n];
+		String edges = Integer.toBinaryString(var);
+		int index = 0;
+		for (int i=0; i < n-1; i++)
+			for (int j=0; j < n-1-i; j++, index++) {
+				matrix[i][j] = Character.getNumericValue(edges.charAt(index));
+				matrix[j][i] = matrix[i][j];
+			}
+		return matrix;
+	}
+	
+		// Find a ((De)^16,De,1/2)-graph H, by exhaustive search
+	private static Graph findExpanderH() {
+		System.out.println("Searching for an expander: a ((De)^16,De,1/2)-graph H");
+		Graph H;
+		for (int De=4;De<5;De++) { // Try graph with an increasing size
+			System.out.println("Trying graphs with regularity degree of: " + De);
+			int N = (int) Math.pow(De, 16);
+			int allVar=0; // the number of all possible simple graphs of size N;
+			for (int i=1; i<N; i++)
+				allVar += i;
+			for (int var = 0; var<allVar; var++) {
+				H = new Graph(GeneralUtils.adjMatrixVariant(var, N),De);
+				System.out.println("Found the following expander with spectral gap: " + H.calculateSpectralGap());
+				/*if(H.calculateSpectralGap() > 0.5) {
+					System.out.println("Found the following expander with spectral gap: " + H.calculateSpectralGap());
+					System.out.println(H);
+					return H;
+				}*/
+			}
+			
+		}
+		return null;
+	}
+	
+	
