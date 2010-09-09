@@ -1,0 +1,1255 @@
+#LyX 1.6.5 created this file. For more info see http://www.lyx.org/
+\lyxformat 345
+\begin_document
+\begin_header
+\textclass article
+\use_default_options true
+\language english
+\inputencoding auto
+\font_roman default
+\font_sans default
+\font_typewriter default
+\font_default_family default
+\font_sc false
+\font_osf false
+\font_sf_scale 100
+\font_tt_scale 100
+
+\graphics default
+\paperfontsize default
+\use_hyperref false
+\papersize default
+\use_geometry false
+\use_amsmath 1
+\use_esint 1
+\cite_engine basic
+\use_bibtopic false
+\paperorientation portrait
+\secnumdepth 3
+\tocdepth 3
+\paragraph_separation indent
+\defskip medskip
+\quotes_language english
+\papercolumns 1
+\papersides 1
+\paperpagestyle default
+\tracking_changes false
+\output_changes false
+\author "" 
+\author "" 
+\end_header
+
+\begin_body
+
+\begin_layout Title
+Implementation of the undirected-s-t-connectivity log-space algorithm
+\end_layout
+
+\begin_layout Author
+Tom Gur, Liron David
+\end_layout
+
+\begin_layout Section
+Introduction
+\end_layout
+
+\begin_layout Standard
+In 2005, Omer Reingold proved that 
+\begin_inset Formula $L=SL$
+\end_inset
+
+ by showing that the 
+\begin_inset Formula $SL-Complete$
+\end_inset
+
+ problem 
+\begin_inset Formula $Undirected-S-T-Connectivity$
+\end_inset
+
+ is in fact in 
+\begin_inset Formula $L$
+\end_inset
+
+ (Omer Reingold, Undirected ST-Connectivity in Log-Space, STOC 2005).
+ We have implemented the mentioned algorithm.
+ The program gets as an input either an adjacencies matrix of a graph, or
+ alternately, it lets the user draw a graph.
+ In addition, two vertices are selected (denote 
+\begin_inset Formula $s,t$
+\end_inset
+
+).
+ The algorithm will then decide whether there is a path between 
+\begin_inset Formula $s$
+\end_inset
+
+ and 
+\begin_inset Formula $t$
+\end_inset
+
+, and if so - it will display this path.
+ All this is being done by using only logarithmic space.
+\end_layout
+
+\begin_layout Standard
+Practically speaking, although the algorithm is in 
+\begin_inset Formula $L$
+\end_inset
+
+, implying that the algorithm runs in polynomial time - it turns out, after
+ a careful analysis, that the polynomial which represents the runtime is
+ very large, rendering the algorithm practically intractable: we've managed
+ to find a very loose lower bound of 
+\begin_inset Formula $\Omega(n^{d*10^{9}})$
+\end_inset
+
+ Where 
+\begin_inset Formula $d\geq4$
+\end_inset
+
+ (There is no time complexity analysis in the paper, and the exact analysis
+ is very tedious, and depends on the specific base expander that is being
+ used).
+ Thus our program does not actually halt in reasonable time.
+\end_layout
+
+\begin_layout Section
+Overview of the algorithm
+\end_layout
+
+\begin_layout Standard
+Roughly speaking, the algorithm works in the following stages, each stage
+ uses logarithmic space only and the connectivity property (in each stage,
+ 
+\begin_inset Formula $s,t$
+\end_inset
+
+ are connected iff they were connected in the original graph) is being preserved
+:
+\end_layout
+
+\begin_layout Subsection
+Input
+\end_layout
+
+\begin_layout Standard
+An undirected graph 
+\begin_inset Formula $G=(V,E)$
+\end_inset
+
+ is explicitly given by a standard adjacencies matrix in addition to two
+ vertices 
+\begin_inset Formula $s,t\in V$
+\end_inset
+
+.
+ Denote 
+\begin_inset Formula $N=|V|$
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Subsection
+Switching the representation of 
+\begin_inset Formula $G$
+\end_inset
+
+ to a rotation map 
+\begin_inset Formula $Rot_{G}$
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+For a 
+\begin_inset Formula $D$
+\end_inset
+
+-regular graph 
+\begin_inset Formula $G$
+\end_inset
+
+, the rotation map 
+\begin_inset Formula $Rot_{G}:[N]\times[D]\rightarrow[N]\times[D]$
+\end_inset
+
+ is defined as follows: 
+\begin_inset Formula $Rot_{G}(v,i)=(w,j)$
+\end_inset
+
+ if the 
+\begin_inset Formula $i$
+\end_inset
+
+'th edge incident to 
+\begin_inset Formula $v$
+\end_inset
+
+ leads to 
+\begin_inset Formula $w$
+\end_inset
+
+, and this edge is the 
+\begin_inset Formula $j$
+\end_inset
+
+'th edge incident to 
+\begin_inset Formula $w$
+\end_inset
+
+.
+ We construct such function from the adjacencies matrix of 
+\begin_inset Formula $G$
+\end_inset
+
+, which given a pair of vertex and edge (label) returns the vertex which
+ is reach by traversing from 
+\begin_inset Formula $v$
+\end_inset
+
+ through 
+\begin_inset Formula $i$
+\end_inset
+
+ and the edge that leads back to 
+\begin_inset Formula $v$
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Subsection
+Transforming 
+\begin_inset Formula $G$
+\end_inset
+
+ into a constant degree non-bipartite regular graph 
+\begin_inset Formula $G_{reg}$
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+The most efficient way to transform 
+\begin_inset Formula $G$
+\end_inset
+
+ into a constant degree no-bipartite regular graph 
+\begin_inset Formula $G_{reg}$
+\end_inset
+
+ while preserving connectivity is by replacing each vertex of 
+\begin_inset Formula $G$
+\end_inset
+
+ by a ring (set of subsequent vertices each connected to the previous vertex
+ and the next vertex) of 
+\begin_inset Formula $N$
+\end_inset
+
+ vertices.
+ Then adding a self loop for each vertex, and finally connecting the ring
+ according to the connections in 
+\begin_inset Formula $G$
+\end_inset
+
+, while maintaining that each vertex can have at most on edge that leads
+ to a different ring (vertices without such edge, will just have another
+ self-loop instead.
+ Formally speaking, the rotation map of 
+\begin_inset Formula $G_{reg}$
+\end_inset
+
+ should be as such:
+\end_layout
+
+\begin_layout Itemize
+\begin_inset Formula $Rot_{G_{reg}}((v,w),1)=((v,w′),2)$
+\end_inset
+
+, where 
+\begin_inset Formula $w′=w+1$
+\end_inset
+
+ if 
+\begin_inset Formula $w<N$
+\end_inset
+
+ and 
+\begin_inset Formula $w′=1$
+\end_inset
+
+ otherwise.
+ 
+\end_layout
+
+\begin_layout Itemize
+\begin_inset Formula $Rot_{G_{reg}}((v,w),2)=((v,w′),1)$
+\end_inset
+
+, where 
+\begin_inset Formula $w′=w−1$
+\end_inset
+
+ if 
+\begin_inset Formula $w>1$
+\end_inset
+
+ and 
+\begin_inset Formula $w′=N$
+\end_inset
+
+ otherwise.
+ 
+\end_layout
+
+\begin_layout Itemize
+\begin_inset Formula $Rot_{G_{reg}}((v,w),3)=((w,v),3)$
+\end_inset
+
+ in case there is an edge between 
+\begin_inset Formula $v$
+\end_inset
+
+ and 
+\begin_inset Formula $w$
+\end_inset
+
+ in 
+\begin_inset Formula $G$
+\end_inset
+
+.
+ Otherwise, 
+\begin_inset Formula $Rot_{G_{reg}}((v,w),3)=((v,w),3).$
+\end_inset
+
+ 
+\end_layout
+
+\begin_layout Itemize
+\begin_inset Formula $Rot_{G_{reg}}((v,w),i)=((v,w),i)$
+\end_inset
+
+, for 
+\begin_inset Formula $i>3$
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Subsection
+Recursively turning 
+\begin_inset Formula $G_{reg}$
+\end_inset
+
+ to a constant degree regular graph with a logarithmic diameter 
+\begin_inset Formula $G_{l}$
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+This stage is the main transformation and the core of the algorithm.
+ In this stage we use a combination of two graph products: powering & the
+ zigzag product, in order to increase the expansion (measured by the spectral
+ gap) upto where the diameter of the graph is logarithmic, while keeping
+ the degree a constant (and preserving the connectivity, of course).
+ The main transformation is being applied recursively until these properties
+ are obtained.
+ Roughly speaking, powering the graph increases the expansion (as long as
+ the graph has self-loops, as we've insured) while increasing the degree,
+ and the zigzag product reduces the degree while not harming the expansion
+ too much.
+\end_layout
+
+\begin_layout Subsubsection
+Matrix powering
+\end_layout
+
+\begin_layout Standard
+Raising the adjacencies matrix of a graph to the power of 
+\begin_inset Formula $k$
+\end_inset
+
+ results in a matrix describing all of the path in length 
+\begin_inset Formula $k$
+\end_inset
+
+.
+ If the graph has self-loops, as we've insured, the product describes all
+ of the path of length upto 
+\begin_inset Formula $k$
+\end_inset
+
+.
+ Thus the expansion increases, but so does the degree.
+ Connectivity is obviously held as power works separately on each connection
+ component by its definition.
+\end_layout
+
+\begin_layout Subsubsection
+Zig-Zag product
+\end_layout
+
+\begin_layout Standard
+The zig-zag product 
+\begin_inset Formula $G\circ H$
+\end_inset
+
+ of regular graphs 
+\begin_inset Formula $G,H$
+\end_inset
+
+ is a regular graph of smaller degree than 
+\begin_inset Formula $G$
+\end_inset
+
+, with a spectral gap that is bounded as a function of the spectral gap
+ of 
+\begin_inset Formula $G$
+\end_inset
+
+ and 
+\begin_inset Formula $H$
+\end_inset
+
+.
+ The zigzag product was introduced by Reingold, Vadhan and Wigderson (
+\begin_inset Quotes eld
+\end_inset
+
+Entropy waves, the zig-zag graph product, and new constant-degree expanders
+\begin_inset Quotes erd
+\end_inset
+
+, 2002).
+ 
+\end_layout
+
+\begin_layout Standard
+Roughly speaking, the zig-zag product 
+\begin_inset Formula $G\circ H$
+\end_inset
+
+ replaces each vertex of 
+\begin_inset Formula $G$
+\end_inset
+
+ with a copy (cloud) of 
+\begin_inset Formula $H$
+\end_inset
+
+, and connects the vertices by moving a small step (zig) inside a cloud,
+ followed by a big step (zag) between two clouds, and finally performs another
+ small step inside the destination cloud.
+\end_layout
+
+\begin_layout Standard
+More formally:Let 
+\begin_inset Formula $G$
+\end_inset
+
+ be a 
+\begin_inset Formula $D$
+\end_inset
+
+-regular graph on 
+\begin_inset Formula $[N]$
+\end_inset
+
+ with rotation map 
+\begin_inset Formula $Rot_{G}$
+\end_inset
+
+ and let 
+\begin_inset Formula $H$
+\end_inset
+
+ be a 
+\begin_inset Formula $d$
+\end_inset
+
+-regular graph on 
+\begin_inset Formula $[D]$
+\end_inset
+
+ with rotation map 
+\begin_inset Formula $Rot_{H}$
+\end_inset
+
+.
+ The zig-zag product 
+\begin_inset Formula $G\circ H$
+\end_inset
+
+ is defined to be the 
+\begin_inset Formula $d^{2}$
+\end_inset
+
+-regular graph on 
+\begin_inset Formula $[N]\times[D]$
+\end_inset
+
+ whose rotation map 
+\begin_inset Formula $Rot_{G\circ H}$
+\end_inset
+
+ is as follows: 
+\end_layout
+
+\begin_layout Standard
+\begin_inset Formula $Rot_{G\circ H}((v,a),(i,j))$
+\end_inset
+
+:
+\end_layout
+
+\begin_layout Enumerate
+Let 
+\begin_inset Formula $(a′,i′)=Rot_{H}(a,i)$
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Enumerate
+Let 
+\begin_inset Formula $(w,b′)=Rot_{G}(v,a′)$
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Enumerate
+Let 
+\begin_inset Formula $(b,j′)=Rot_{H}(b′,j)$
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Enumerate
+Output 
+\begin_inset Formula $((w,b),(j′,i′))$
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Standard
+The zigzag product holds these properties:
+\end_layout
+
+\begin_layout Enumerate
+Reduction of the degree: It is immediate from the definition of the zigzag
+ product that it transforms a graph 
+\begin_inset Formula $G$
+\end_inset
+
+ to a new graph which is 
+\begin_inset Formula $d^{2}$
+\end_inset
+
+-regular.
+ Thus if 
+\begin_inset Formula $G$
+\end_inset
+
+ is a significantly larger than 
+\begin_inset Formula $H$
+\end_inset
+
+, the zigzag product will reduce the degree of 
+\begin_inset Formula $G$
+\end_inset
+
+.
+ Roughly speaking, by amplifying each vertex of 
+\begin_inset Formula $G$
+\end_inset
+
+ into a cloud of the size of 
+\begin_inset Formula $H$
+\end_inset
+
+ the product in fact splits the edges of each original vertex between the
+ vertices of the cloud that replace it.
+\end_layout
+
+\begin_layout Enumerate
+Spectral gap preservation: The expansion of a graph can be measured by its
+ spectral gap.
+ An important property of the zigzag product is the preservation of the
+ spectral gap.
+ That is, if 
+\begin_inset Formula $H$
+\end_inset
+
+ is a 
+\begin_inset Quotes eld
+\end_inset
+
+good enough
+\begin_inset Quotes erd
+\end_inset
+
+ expander (has a large spectral gap) then the expansion of the zigzag product
+ is close to to the original expansion of 
+\begin_inset Formula $G.$
+\end_inset
+
+ Formally: Define a 
+\begin_inset Formula $(N,D,\lambda)$
+\end_inset
+
+-graph as any 
+\begin_inset Formula $D$
+\end_inset
+
+-regular graph on 
+\begin_inset Formula $N$
+\end_inset
+
+ vertices, whose second largest eigenvalue (of the associated random walk)
+ has absolute value at most 
+\begin_inset Formula $\lambda$
+\end_inset
+
+.
+ Let 
+\begin_inset Formula $G_{1}$
+\end_inset
+
+ be a 
+\begin_inset Formula $(N_{1},D_{1},\lambda_{1})$
+\end_inset
+
+-graph and 
+\begin_inset Formula $G_{2}$
+\end_inset
+
+ be a 
+\begin_inset Formula $(D_{1},D_{2},\lambda_{2})$
+\end_inset
+
+-graph, then 
+\begin_inset Formula $G_{1}\circ G_{2}$
+\end_inset
+
+ is a 
+\begin_inset Formula $(N_{1}\cdot D_{1},D_{2}^{2},f(\lambda_{1},\lambda_{2}))$
+\end_inset
+
+-graph, where 
+\begin_inset Formula $f(\lambda_{1},\lambda_{2})<\lambda_{1}+\lambda_{2}+\lambda_{2}^{2})$
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Enumerate
+Connectivity preservation: The zigzag product 
+\begin_inset Formula $G\circ H$
+\end_inset
+
+ preserve each connected component of 
+\begin_inset Formula $G$
+\end_inset
+
+, so every two connected vertices in 
+\begin_inset Formula $G$
+\end_inset
+
+ are also connected in 
+\begin_inset Formula $G\circ H$
+\end_inset
+
+ and vice verse.
+ Formally speaking, given two graphs 
+\begin_inset Formula $G,H$
+\end_inset
+
+ if 
+\begin_inset Formula $s,t$
+\end_inset
+
+ are vertices of 
+\begin_inset Formula $G$
+\end_inset
+
+, and 
+\begin_inset Formula $s',t'$
+\end_inset
+
+ are the corresponding vertices in 
+\begin_inset Formula $G\circ H$
+\end_inset
+
+ (in fact, 
+\begin_inset Formula $s'$
+\end_inset
+
+ and 
+\begin_inset Formula $t'$
+\end_inset
+
+ could be any vertices inside the corresponding 
+\begin_inset Quotes eld
+\end_inset
+
+cloud
+\begin_inset Quotes erd
+\end_inset
+
+ that the zigzag product induced), then 
+\begin_inset Formula $s',t'$
+\end_inset
+
+ are in the same connected component of 
+\begin_inset Formula $G\circ H$
+\end_inset
+
+ if and only if 
+\begin_inset Formula $s,t$
+\end_inset
+
+ are in the same connected component in 
+\begin_inset Formula $G$
+\end_inset
+
+.
+ It's easy to see that this property holds, since the zig-zag product essentiall
+y transform each vertex of 
+\begin_inset Formula $G$
+\end_inset
+
+ into a 
+\begin_inset Quotes eld
+\end_inset
+
+cloud
+\begin_inset Quotes erd
+\end_inset
+
+ isomorphic to 
+\begin_inset Formula $H$
+\end_inset
+
+, and the edges between the vertices of 
+\begin_inset Formula $G$
+\end_inset
+
+ are by definition transformed into edges between the 
+\begin_inset Quotes eld
+\end_inset
+
+clouds
+\begin_inset Quotes erd
+\end_inset
+
+ in 
+\begin_inset Formula $G\circ H$
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Subsubsection
+Main Transformation
+\end_layout
+
+\begin_layout Standard
+The main transformation is basically a careful recursive composition of
+ these two graph products, which keeps a very gentle balance between degree
+ and expansion.
+ It's defined as follows:
+\end_layout
+
+\begin_layout Standard
+On input 
+\begin_inset Formula $G$
+\end_inset
+
+ and 
+\begin_inset Formula $H$
+\end_inset
+
+, where 
+\begin_inset Formula $G$
+\end_inset
+
+ is a 
+\begin_inset Formula $D^{16}$
+\end_inset
+
+-regular graph on 
+\begin_inset Formula $[N]$
+\end_inset
+
+ and 
+\begin_inset Formula $H$
+\end_inset
+
+ is a 
+\begin_inset Formula $D$
+\end_inset
+
+-regular graph on 
+\begin_inset Formula $[D^{16}]$
+\end_inset
+
+, both given by their rotation maps, the transformation 
+\begin_inset Formula $T$
+\end_inset
+
+ outputs the rotation map of a graph 
+\begin_inset Formula $G_{l}$
+\end_inset
+
+ defined as follows:
+\end_layout
+
+\begin_layout Itemize
+Set 
+\begin_inset Formula $l$
+\end_inset
+
+ to be the smallest integer such that 
+\begin_inset Formula $(1−1/DN^{2})^{2l}<1/2$
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Itemize
+Set 
+\begin_inset Formula $G_{0}$
+\end_inset
+
+ to equal G, and for 
+\begin_inset Formula $i>0$
+\end_inset
+
+ define 
+\begin_inset Formula $G_{i}$
+\end_inset
+
+ recursively by the rule: 
+\begin_inset Formula $G_{i}=(G_{i−1}\circ H)^{8}$
+\end_inset
+
+.
+ 
+\end_layout
+
+\begin_layout Itemize
+Denote by 
+\begin_inset Formula $T_{i}(G,H)$
+\end_inset
+
+ the graph 
+\begin_inset Formula $G_{i}$
+\end_inset
+
+, and 
+\begin_inset Formula $T(G,H)=G_{l}$
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Subsection
+Exhaustive search over all possible routes of 
+\begin_inset Formula $G_{l}$
+\end_inset
+
+
+\end_layout
+
+\begin_layout Standard
+Now, that we've got 
+\begin_inset Formula $G_{l}$
+\end_inset
+
+ a constant degree (denote 
+\begin_inset Formula $d)$
+\end_inset
+
+ expander of size 
+\begin_inset Formula $n$
+\end_inset
+
+, with a logarithmic diameter - there are 
+\begin_inset Formula $O(d^{logn})$
+\end_inset
+
+ possible routes, thus it is possible to perform an exhaustive search over
+ all routes in logarithmic time.
+\end_layout
+
+\begin_layout Section
+Software operation instructions
+\end_layout
+
+\begin_layout Standard
+The user interface is very simple.
+ The user can choose between drawing a graph by hand or inputting the graph
+ through a file.
+ 
+\end_layout
+
+\begin_layout Standard
+In order to use a file, just click the 
+\begin_inset Quotes eld
+\end_inset
+
+Enter graph path
+\begin_inset Quotes erd
+\end_inset
+
+ checkbox, and either insert the path manually, or use the browse button
+ to select it graphically.
+ the file format is a normal, space separated, adjacencies matrix format.
+ The vertices will by named by their order in the adjacencies matrix 
+\begin_inset Formula $0,\ldots,n-1$
+\end_inset
+
+.
+ Then the user should insert the number of the start and end vertices (
+\begin_inset Formula $s,t$
+\end_inset
+
+) and click 
+\begin_inset Quotes eld
+\end_inset
+
+Ok
+\begin_inset Quotes erd
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Standard
+Alternately, the user can click the 
+\begin_inset Quotes eld
+\end_inset
+
+Draw graph
+\begin_inset Quotes erd
+\end_inset
+
+ checkbox and click 
+\begin_inset Quotes eld
+\end_inset
+
+Ok
+\begin_inset Quotes erd
+\end_inset
+
+.
+ Then a new window will appear (with instructions).
+ In order to draw a vertex, one should simply click on an empty space inside
+ the window.
+ Double-clicking a vertex will set it as 
+\begin_inset Formula $s$
+\end_inset
+
+, double-clicking on another vertex will set it as 
+\begin_inset Formula $t$
+\end_inset
+
+.
+ Finally, clicking on two consecutive vertices will draw an edge between
+ them.
+ Clicking 
+\begin_inset Quotes eld
+\end_inset
+
+Ok
+\begin_inset Quotes erd
+\end_inset
+
+ will run the algorithm.
+\end_layout
+
+\begin_layout Section
+Implementation details
+\end_layout
+
+\begin_layout Standard
+We would like to open this section with a note: One of the most prominent
+ qualities of this algorithm is the fact it only uses logarithmic space.
+ This quality dictates a very unorthodox coding style, as non of the data
+ is being stored.
+ i.e at each step of each walk over 
+\begin_inset Formula $G_{l}$
+\end_inset
+
+ the entire calculation of the main transformation (recursion over recursion
+ over recursion...) is being performed.
+ Thus we don't actually explicitly ever build any of the graphs mentioned
+ above, we only calculate labels over labels each time a graph is being
+ accessed.
+ This style of structure enforce a very strict coding style which is not
+ very consistent with the standard object-oriented-java approach.
+\end_layout
+
+\begin_layout Standard
+With that behind us, let's get into the schematics of the program.
+ After the user inputs the graph 
+\begin_inset Formula $G$
+\end_inset
+
+ and the vertices 
+\begin_inset Formula $s,t$
+\end_inset
+
+, the static 
+\begin_inset Quotes eld
+\end_inset
+
+solve_ustconn
+\begin_inset Quotes erd
+\end_inset
+
+ method from the Solver class is being called.
+ Than, the base expander, 
+\begin_inset Formula $H$
+\end_inset
+
+ is being created.
+ Although 
+\begin_inset Formula $H$
+\end_inset
+
+ does not depend on the input, thus is 
+\begin_inset Formula $O(1)$
+\end_inset
+
+, it's size has to be of at least 
+\begin_inset Formula $4^{16}$
+\end_inset
+
+ vertices, which is too large to be stored in the memory.
+ In the paper 
+\begin_inset Formula $H$
+\end_inset
+
+ is being found by an exhaustive search (as it's only 
+\begin_inset Formula $O(1)$
+\end_inset
+
+).
+ Although deprecated, we've left the code for this exhaustive search in
+ our code (which also calculates the spectral gap, and complete spectral
+ analysis of the matrices - done by a combination of numerical linear algebra
+ we wrote and algorithms from the JAMA library which we modified for our
+ needs) - In practice, we've created an abstract class 
+\begin_inset Quotes eld
+\end_inset
+
+Expander
+\begin_inset Quotes erd
+\end_inset
+
+, of which we had several derived classes of quite a few explicit constructions
+ of expanders.
+ We've ended up choosing the explicit construction of the Gabber-Galil expander,
+ due to the combination of small degree (8) and simplicity.
+\end_layout
+
+\begin_layout Standard
+After 
+\begin_inset Formula $H$
+\end_inset
+
+ is create.
+ The algorithm makes an instance of the 
+\begin_inset Quotes eld
+\end_inset
+
+MainTransformation
+\begin_inset Quotes erd
+\end_inset
+
+ class, which contains all of the functions that are needed to generate
+ the rotation map of 
+\begin_inset Formula $G_{l}$
+\end_inset
+
+, the final constant degree expander with a logarithmic diameter.
+ The program then perform an exhaustive search for a path between 
+\begin_inset Formula $s$
+\end_inset
+
+ and 
+\begin_inset Formula $t$
+\end_inset
+
+ over the rotation map of 
+\begin_inset Formula $G_{l}$
+\end_inset
+
+, and returns whether such path exists, and in the latter case, shows the
+ path.
+\end_layout
+
+\begin_layout Standard
+We also have a function that can explicitly build the adjacencies matrix
+ from each rotation map, and another function that visually displays the
+ graphs (more in section 5), so we can display the graph in each step of
+ the transformations, but since the size of the graphs is enormous, this
+ is not practical.
+\end_layout
+
+\begin_layout Section
+Code documentation
+\end_layout
+
+\begin_layout Standard
+In this section we will describe the role of each important class (There
+ are some trivial classes such as 
+\begin_inset Quotes eld
+\end_inset
+
+Pair
+\begin_inset Quotes erd
+\end_inset
+
+ which does not need any explanation) in the program.
+ Each non-trivial method inside of each class is documented within the code.
+\end_layout
+
+\begin_layout Subsection
+graph_utils
+\end_layout
+
+\begin_layout Subsubsection
+Graph.java
+\end_layout
+
+\begin_layout Standard
+The basic explicit graph class.
+ Includes whatever you'd expect from an adjacencies matrix represented graph.
+ You will also find the function Rot, which calculates the rotation map
+ of the graph from the adjacencies matrix.
+ Notice that this is the only place that the input is actually accessed.
+ Also includes a method that can calculate the spectral gap of the graph
+ and additional utils.
+\end_layout
+
+\begin_layout Subsubsection
+Expander.java
+\end_layout
+
+\begin_layout Standard
+An abstract class inherited from Graph.
+ Meant to be used to represent graphs by rotation map only, as these graphs
+ are too big to store in memory.
+\end_layout
+
+\begin_layout Subsubsection
+GabberGalilExpander.java
+\end_layout
+
+\begin_layout Standard
+The chosen implementation of the mentioned expander.
+\end_layout
+
+\begin_layout Subsubsection
+GraphOperators.java
+\end_layout
+
+\begin_layout Standard
+This class includes the implementation of the zig-zag product and matrix
+ powering.
+ In addition, it includes the mentioned implementation of the rotation map
+ of 
+\begin_inset Formula $G_{reg}$
+\end_inset
+
+, the transformation that makes 
+\begin_inset Formula $G$
+\end_inset
+
+ into a constant degree regular graph.
+\end_layout
+
+\begin_layout Subsubsection
+GeneralUtils.java
+\end_layout
+
+\begin_layout Standard
+Includes a method that extract the adjacenices matrix of a graph from its
+ rotation map (The rest of the deprecated util have moved to the Junkyard
+ file).
+\end_layout
+
+\begin_layout Subsection
+ustconn_solver_algorithm
+\end_layout
+
+\begin_layout Subsubsection
+Solver.java
+\end_layout
+
+\begin_layout Standard
+The main class with the static method that allows to solve a ust-conn problem,
+ and the exhaustive search method.
+\end_layout
+
+\begin_layout Subsubsection
+MainTransformation.java
+\end_layout
+
+\begin_layout Standard
+This class holds everything that is needed to perform the recursive calculation
+ of the main transformation.
+ Actually stores the rotation map of the final graph 
+\begin_inset Formula $G_{l}$
+\end_inset
+
+.
+\end_layout
+
+\begin_layout Subsection
+misc
+\end_layout
+
+\begin_layout Subsubsection
+Label.java
+\end_layout
+
+\begin_layout Standard
+A simple vertex + index pair.
+\end_layout
+
+\begin_layout Subsection
+gui
+\end_layout
+
+\begin_layout Subsubsection
+USTCONN_Applet.java
+\end_layout
+
+\begin_layout Standard
+The main applet.
+\end_layout
+
+\begin_layout Subsubsection
+IO_Handler.java
+\end_layout
+
+\begin_layout Standard
+Includes the graph drawing applet and visualization of graphs given by adjacenci
+es matrices.
+\end_layout
+
+\end_body
+\end_document
